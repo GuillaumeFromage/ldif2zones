@@ -1,0 +1,7 @@
+This code is pretty self explanatory, it just
+create zone files from ldif filed pulled off
+a ldapdns server. The coding standard is 
+terrible, but its just a hack I've done in a
+day to get a damn ldapdns server off the map.
+
+
