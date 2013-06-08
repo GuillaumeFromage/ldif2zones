@@ -1,16 +1,35 @@
 #!/usr/bin/python
 
+# I want this to stay under GPL v3
+
+# You can reach me at gbeaulieu at koumbit.org
+
 import sys
 from string import Template
-from dns import *
 from time import localtime, strftime, time
-from easyzone import easyzone
 from ldif import LDIFParser,LDIFWriter
 import argparse
 
 class MyLDIF(LDIFParser):
    def __init__(self,input,output,root,ns1,ns2,outputdir='.'):
       LDIFParser.__init__(self,input)
+      rantoday = open('.rantoday', 'r')
+      try:
+          serial = rantoday.readline()
+          print serial
+          if serial != '': 
+              serial = int(serial) 
+          else: 
+              serial = 0
+          serialNum = serial + 1
+          rantoday.close()
+          rantoday = open('.rantoday', 'w+')
+          rantoday.write(str(serialNum))
+          print serialNum
+          rantoday.close()
+      except IOError:
+          exit("couldn't read local directory, to create a .rantoday file to help counting the reruns to get the serial to increase")
+      self.serial = serialNum       
       self.writer = LDIFWriter(output)
       self.megaArray = {}
       self.valueInEntries = []
@@ -30,7 +49,7 @@ class MyLDIF(LDIFParser):
            'subz': '',
            'main': '',
            'domain': textdomain,
-           'serial': int(strftime('%Y%m%d00', localtime(time()))),
+           'serial': int(strftime('%Y%m%d' + '%02d' % self.serial, localtime(time()))), # this is not the best way around
            'origin': textdomain + '.'}
 
    def zoneWrite(self, zone):
@@ -60,7 +79,7 @@ class MyLDIF(LDIFParser):
 
    def skimValuables(self, valuez):
        output = {}
-       for a in ['aRecord','nSRecord','mXRecord','cNAMERecord']:
+       for a in ['aRecord','mXRecord','cNAMERecord']:
            if valuez.has_key(a):
                output[a] = valuez[a]
        return output
@@ -71,6 +90,17 @@ class MyLDIF(LDIFParser):
 
    def unfuckTemplating(self, domain, entry, value):
        remap = {'aRecord': 'A', 'nSRecord': 'NS', 'mXRecord': 'MX', 'cNAMERecord': 'CNAME'}
+       # ldap dns doesn't seem to give a flying fuck about . at the end of entries
+       # which bind gets whinny about 
+       # TODO: check the RFCs to see if we have to worry about entries such as:
+       # asdf CNAME asdf2
+       # if so, fix this shit. We would probably have to run over everyting after
+       # all the subzones are processed and this is why I corrected my ldif file
+       # instead of writing this tedious code.
+       if entry == 'mXRecord' and value[-1] != '.':
+           value = value + '.'
+       if entry == 'cNAMERecord' and value[-1] != '.':
+           value = value + '.'
        # we'll just pad to 16 char
        return "" + domain.ljust(25) + remap[entry].ljust(7) + value + '\n'
  
@@ -103,13 +133,13 @@ class MyLDIF(LDIFParser):
                   # we don't need zone file for those
                   print "skipping tlds"
               if a>=2:
-		  # we need to create zone files for the fuckers
+          # we need to create zone files for the fuckers
                   for b in self.megaWeirdArray[a].keys():
                       # we compute the domain name for the entry
                       domain=b.split(',')
                       domain.reverse() # again !
                       i = 0
-		      dom_stripped = []
+                      dom_stripped = []
                       for c in domain:
                           # we just cut the dn= part of dn=fart
                           dom_stripped.append(c[3:])
@@ -179,4 +209,4 @@ parser = MyLDIF(open(a.infile, 'rb'), sys.stdout, root, outputdir=a.outdir, ns1=
 parser.parse()
 parser.recursiveDNCrap()
 parser.printItOut()
-
+print parser.serial
