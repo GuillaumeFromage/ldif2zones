@@ -34,6 +34,7 @@ class MyLDIF(LDIFParser):
       self.megaArray = {}
       self.valueInEntries = []
       self.megaTree = {}
+      self.subDomainRecords = {}
       self.root = root
       self.ns1 = ns1
       self.ns2 = ns2
@@ -103,17 +104,37 @@ class MyLDIF(LDIFParser):
            value = value + '.'
        # we'll just pad to 16 char
        return "" + domain.ljust(25) + remap[entry].ljust(7) + value + '\n'
+
+   def sanitizeRecords(self, valuables):
+       # Code to avoid getting "CNAME and other data"
+      
+       # This code prevent that the zone files don't get loaded
+       # because they specify on one of their subdomain, a cname
+       # AND other data (such as a A record)
  
+       # TODO: check what is the defaut behavior for ldapDNS here.
+       # I seem to only have a few dozen domains having this issue in
+       # my tree so I just let the CNAME rule over everything 
+    
+       # TODO I don't think this should be in this class at all :D
+       
+       if valuables.has_key('cNAMERecord'):
+           return {'cNAMERecord' : valuables['cNAMERecord'] }
+       return valuables
+
    def insertSubZones(self, parent, values, textdomain_shrunk):
        valuables = self.skimValuables(values)
-       for b in valuables:
+       vals = self.sanitizeRecords(valuables)
+       for b in vals:
            for c in values[b]:
                self.zoneArray[parent]['subz'] = self.zoneArray[parent]['subz'] + self.unfuckTemplating(textdomain_shrunk, b, c)
-
-
+   
    def addrecords(self, zone, values, name):
+       # TODO wet code, see insertSubZones
        valuables = self.skimValuables(values)
-       for b in valuables:
+       vals = self.sanitizeRecords(valuables)
+
+       for b in vals:
            for c in values[b]:
                self.zoneArray[name]['main'] = self.zoneArray[name]['main'] + self.unfuckTemplating('@', b, c)
 
