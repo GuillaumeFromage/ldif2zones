@@ -32,6 +32,7 @@ class MyLDIF(LDIFParser):
       self.serial = serialNum       
       self.writer = LDIFWriter(output)
       self.megaArray = {}
+      self.cnamed = []
       self.valueInEntries = []
       self.megaTree = {}
       self.subDomainRecords = {}
@@ -133,7 +134,15 @@ class MyLDIF(LDIFParser):
        # TODO wet code, see insertSubZones
        valuables = self.skimValuables(values)
        vals = self.sanitizeRecords(valuables)
-
+       # So you can't have CNAME AND other records, and you can't make a CNAME only
+       # record (https://lists.isc.org/pipermail/bind-users/2011-December/086075.html)
+       # so if there is a cNAMERecord in the main part of a domain, we just drop the
+       # fucking thing (instead of doing sanitize, that prevents CNAME AND other data).
+       if vals.has_key('cNAMERecord'):
+           del vals['cNAMERecord']
+       self.zoneArray[name]['main'] = self.zoneArray[name]['main'] + self.unfuckTemplating('@', 'nSRecord', self.ns2)
+       self.zoneArray[name]['main'] = self.zoneArray[name]['main'] + self.unfuckTemplating('@', 'nSRecord', self.ns1)
+           
        for b in vals:
            for c in values[b]:
                self.zoneArray[name]['main'] = self.zoneArray[name]['main'] + self.unfuckTemplating('@', b, c)
@@ -170,7 +179,7 @@ class MyLDIF(LDIFParser):
                       # we start at 1 less then the level we are. Eg: we're at fuck.shit.up, we go to shit.up
                       # normally, the first pass would always go
                       found = 0
-                      print textdomain
+                      # print textdomain
                       while grandLevel >= 2:
                           parent = '.'.join(dom_stripped[-grandLevel:])
                           print parent + " grandLevel= " + str(grandLevel)
