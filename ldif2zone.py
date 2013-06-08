@@ -140,8 +140,8 @@ class MyLDIF(LDIFParser):
        # fucking thing (instead of doing sanitize, that prevents CNAME AND other data).
        if vals.has_key('cNAMERecord'):
            del vals['cNAMERecord']
-       self.zoneArray[name]['main'] = self.zoneArray[name]['main'] + self.unfuckTemplating('@', 'nSRecord', self.ns2)
-       self.zoneArray[name]['main'] = self.zoneArray[name]['main'] + self.unfuckTemplating('@', 'nSRecord', self.ns1)
+       self.zoneArray[name]['main'] = self.zoneArray[name]['main'] + self.unfuckTemplating('@', 'nSRecord', self.ns2 + '.')
+       self.zoneArray[name]['main'] = self.zoneArray[name]['main'] + self.unfuckTemplating('@', 'nSRecord', self.ns1 + '.')
            
        for b in vals:
            for c in values[b]:
